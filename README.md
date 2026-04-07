@@ -8,7 +8,7 @@ Aplicacion desplegada: https://losdelfondo-frontend.onrender.com/
 
 ## CI antes de desplegar en Render
 
-Se ha anadido el workflow de GitHub Actions en [`.github/workflows/ci.yml`](/d:/LosDelFondo/.github/workflows/ci.yml) para validar el proyecto antes del despliegue.
+Se ha anadido el workflow de GitHub Actions en [`.github/workflows/ci.yml`](/LosDelFondo/.github/workflows/ci.yml) para validar el proyecto antes del despliegue.
 
 Checks que ejecuta:
 
@@ -17,12 +17,6 @@ Checks que ejecuta:
 - regenera el dataset procesado
 - comprueba que el Parquet existe y tiene la estructura esperada
 
-Para que Render espere a estos checks antes de publicar:
-
-1. Abre el servicio en Render.
-2. Ve a `Settings`.
-3. En `Build & Deploy`, cambia `Auto-Deploy` a `After CI Checks Pass`.
-4. Asegurate de que el repositorio conectado es este mismo repositorio de GitHub.
 
 ## Como lanzar la web en local
 
