@@ -30,8 +30,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Título y encabezado
-st.title("🏆 DEPORTEData: Analítica e Inteligencia Deportiva")
-st.markdown("### Reto A — Evolución del gasto en deporte por hogar y su relación con la práctica deportiva federada por CCAA")
+st.title("DEPORTEData: Analítica e Inteligencia Deportiva")
+st.markdown("### Evolución del gasto en deporte por hogar y su relación con la práctica deportiva federada por CCAA")
 
 # Pestañas principales
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard del Reto", "📝 Metodología y Conclusiones", "🤖 Asistente IA (RAG)"])
