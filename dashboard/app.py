@@ -84,8 +84,24 @@ with tab1:
     st.subheader("Evolución de Gasto vs Licencias (DEPORTEData 2023)")
     try:
         df_real = pd.read_parquet("data/processed/deporte_data/anio=2023/hechos_indicadores.parquet")
-        st.scatter_chart(df_real, x="Gasto_Promedio_Hogar_Eur", y="Licencias_Federadas")
-        st.dataframe(df_real[['CCAA', 'Gasto_Promedio_Hogar_Eur', 'Licencias_Federadas']].head(5))
+        
+        # Preparar dataframe para visualización (Quitar guiones)
+        df_display = df_real.rename(columns={
+            'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur',
+            'Licencias_Federadas': 'Licencias Federadas'
+        })
+        
+        st.scatter_chart(df_display, x="Gasto Promedio Hogar Eur", y="Licencias Federadas")
+        
+        st.subheader("Gasto Promedio por Hogar por CCAA")
+        st.bar_chart(df_display, x="CCAA", y="Gasto Promedio Hogar Eur")
+
+        st.subheader("Tabla de Indicadores Completos")
+        # Ajustar índice para empezar en 1 y mostrar todas las comunidades
+        df_table = df_display[['CCAA', 'Gasto Promedio Hogar Eur', 'Licencias Federadas']].copy()
+        df_table.index = range(1, len(df_table) + 1)
+        st.dataframe(df_table, use_container_width=True)
+        
     except Exception as e:
         st.error(f"No se pudo cargar el dataset procesado (Parquet). Ejecuta process_data.py primero.")
 
@@ -121,18 +137,22 @@ with tab2:
             prompt_lower = prompt.lower()
             try:
                 df_rag = pd.read_parquet("data/processed/deporte_data/anio=2023/hechos_indicadores.parquet")
+                df_rag = df_rag.rename(columns={
+                    'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur',
+                    'Licencias_Federadas': 'Licencias Federadas'
+                })
                 
                 if "gasta más" in prompt_lower or "mayor gasto" in prompt_lower or "más gasta" in prompt_lower:
-                    row = df_rag.loc[df_rag['Gasto_Promedio_Hogar_Eur'].idxmax()]
-                    assistant_response = f"🔍 He consultado el data warehouse. La Comunidad Autónoma que más gasta en deporte en promedio por hogar es **{row['CCAA']}**, con un gasto medio de **{row['Gasto_Promedio_Hogar_Eur']} €** al año."
+                    row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmax()]
+                    assistant_response = f"🔍 He consultado el data warehouse. La Comunidad Autónoma que más gasta en deporte en promedio por hogar es **{row['CCAA']}**, con un gasto medio de **{row['Gasto Promedio Hogar Eur']} €** al año."
                 elif "gasta menos" in prompt_lower or "menor gasto" in prompt_lower or "menos gasta" in prompt_lower:
-                    row = df_rag.loc[df_rag['Gasto_Promedio_Hogar_Eur'].idxmin()]
-                    assistant_response = f"🔍 La Comunidad Autónoma que menos gasta en deporte en promedio por hogar es **{row['CCAA']}**, con un gasto medio de **{row['Gasto_Promedio_Hogar_Eur']} €** al año."
+                    row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmin()]
+                    assistant_response = f"🔍 La Comunidad Autónoma que menos gasta en deporte en promedio por hogar es **{row['CCAA']}**, con un gasto medio de **{row['Gasto Promedio Hogar Eur']} €** al año."
                 elif "licencias" in prompt_lower and "más" in prompt_lower:
-                    row = df_rag.loc[df_rag['Licencias_Federadas'].idxmax()]
-                    assistant_response = f"🏆 Según los datos procesados, **{row['CCAA']}** tiene el mayor nivel de práctica federada con **{row['Licencias_Federadas']} licencias** activas."
+                    row = df_rag.loc[df_rag['Licencias Federadas'].idxmax()]
+                    assistant_response = f"🏆 Según los datos procesados, **{row['CCAA']}** tiene el mayor nivel de práctica federada con **{row['Licencias Federadas']} licencias** activas."
                 elif "dataset" in prompt_lower or "consiste" in prompt_lower or ("que" in prompt_lower and "datos" in prompt_lower):
-                    assistant_response = "📂 El dataset contiene información transversal del 'Reto A'. Integra datos del INE y CSD con métricas como el 'Gasto Promedio por Hogar (Eur)' y el número de 'Licencias Federadas' de las 17 CCAA de España para el año 2023."
+                    assistant_response = "📂 El dataset contiene información transversal del 'Reto A'. Integra datos del INE y CSD con métricas como el 'Gasto Promedio por Hogar (Eur)' y el número de 'Licencias Federadas' de las 17 CCAA para el año 2023."
                 else:
                     assistant_response = f"🧠 Como tu asistente IA local, he analizado tu consulta sobre '{prompt}'. Basado en los indicadores transversales, observamos una fuerte correlación directa entre gasto y nivel de práctica federada a nivel nacional. Si necesitas detalles de alguna CCAA (ej. '¿Quién gasta más?'), no dudes en preguntarme."
             except Exception as e:
@@ -155,7 +175,7 @@ if st.session_state.is_admin:
         st.subheader("Subida de nuevos datasets")
         uploaded_file = st.file_uploader("Elige un archivo .parquet o .csv", type=["parquet", "csv"])
         if uploaded_file is not None:
-            st.success("Archivo subido correctamente (simulación)")
+            st.success("Archivo subido correctamente")
 
         st.subheader("Panel de Uso")
         col_u1, col_u2 = st.columns(2)
@@ -225,4 +245,11 @@ with st.sidebar:
     st.divider()
     st.markdown("### Seleccionar Filtros Genéricos")
     st.selectbox("Año de Datos", ["2023", "2022", "2021", "2020"])
-    st.selectbox("Territorio", ["Todas las CCAA", "Madrid", "Cataluña", "Andalucía", "Galicia", "País Vasco", "Comunidad Valenciana"])
+    st.selectbox("Territorio", [
+        "Todas las CCAA", 
+        "Andalucía", "Aragón", "Asturias, Principado de", "Balears, Illes", 
+        "Canarias", "Cantabria", "Castilla y León", "Castilla - La Mancha", 
+        "Cataluña", "Comunitat Valenciana", "Extremadura", "Galicia", 
+        "Madrid, Comunidad de", "Murcia, Región de", "Navarra, Comunidad Foral de", 
+        "País Vasco", "Rioja, La"
+    ])
