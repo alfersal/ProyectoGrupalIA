@@ -34,7 +34,7 @@ st.title("DEPORTEData: Analítica e Inteligencia Deportiva")
 st.markdown("### Evolución del gasto en deporte por hogar y su relación con la práctica deportiva federada por CCAA")
 
 # Pestañas principales
-tab1, tab2, tab3 = st.tabs(["📊 Dashboard del Reto", "📝 Metodología y Conclusiones", "🤖 Asistente IA (RAG)"])
+tab1, tab2 = st.tabs(["📊 Dashboard del Reto", "📝 Metodología y Conclusiones", "🤖 Asistente IA (RAG)"])
 
 with tab1:
     st.header("Dashboard Analítico")
@@ -53,20 +53,8 @@ with tab1:
     except Exception as e:
         st.error(f"No se pudo cargar el dataset procesado (Parquet). Ejecuta process_data.py primero.")
 
-with tab2:
-    st.header("Metodología del Proyecto")
-    st.markdown("""
-    **Objetivo:** Analizar cómo ha evolucionado el gasto medio en bienes y servicios vinculados al deporte en los hogares españoles y si existe una relación directa con los niveles de práctica federada en las diferentes Comunidades Autónomas.
-    
-    **Fases del Pipeline:**
-    1. **Ingesta:** Extracción de datos públicos (INE y CSD).
-    2. **Curación:** Limpieza, validación de calidad y homogeneización territorial.
-    3. **Modelo:** Esquema en estrella exportado a Parquet particionado en AWS S3.
-    4. **Analítica:** Clustering territorial y análisis de correlaciones de Pearson entre Gasto y Práctica.
-    """)
-    st.success("✔️ **Conclusión preliminar:** Existe una alta correlación positiva en las agrupaciones territoriales del cuadrante norte peninsular, así como un incremento generalizado post-2020.")
 
-with tab3:
+with tab2:
     st.header("Consulta Inteligente sobre DEPORTEData")
     st.write("Consulta al asistente virtual (RAG) sobre los datasets de deporte, los indicadores y las conclusiones específicas extraídas por el equipo.")
     
