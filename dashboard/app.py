@@ -157,8 +157,52 @@ if st.session_state.is_admin:
         if uploaded_file is not None:
             st.success("Archivo subido correctamente (simulación)")
 
-        st.subheader("Estado del Sistema")
-        st.json({"status": "operativo", "last_sync": "2023-11-20 14:00:23", "version": "Alpha V1.1"})
+        st.subheader("Panel de Uso")
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+            st.metric("Usuarios Activos (24h)", "142", "12%")
+            # Mock data para uso
+            chart_data_usage = pd.DataFrame(
+                np.random.randn(20, 2),
+                columns=['Consultas IA', 'Visitas Dashboard']
+            )
+            st.line_chart(chart_data_usage)
+        with col_u2:
+            st.metric("Consultas Totales", "2,840", "5.4%")
+            st.bar_chart(np.random.randint(10, 100, size=(7, 1)))
+
+        st.divider()
+
+        st.subheader("Telemetría del Sistema")
+        col_t1, col_t2, col_t3 = st.columns(3)
+        col_t1.metric("Latencia Media (ms)", "120ms", "-5ms")
+        col_t2.metric("Uso de CPU", "24%", "2%")
+        col_t3.metric("Uso de Memoria", "1.2GB", "0.1GB")
+        
+        chart_data_latency = pd.DataFrame(
+            np.random.rand(24, 1) * 100 + 50,
+            columns=['Latencia ms']
+        )
+        st.area_chart(chart_data_latency)
+
+        st.divider()
+
+        st.subheader("Seguridad y Logs")
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            st.metric("Alertas de Seguridad", "0", "0")
+            st.info("No se han detectado intrusiones en las últimas 48 horas.")
+        with col_s2:
+            # Mock login data
+            auth_data = pd.DataFrame({
+                "Evento": ["Login OK", "Login Fallido", "Logout"],
+                "Cantidad": [45, 3, 40]
+            })
+            st.bar_chart(auth_data, x="Evento", y="Cantidad")
+
+        st.divider()
+        st.subheader("Estado General")
+        st.json({"status": "operativo", "last_sync": "2023-11-20 14:00:23", "version": "Alpha V1.2"})
 
 # Sidebar y personalización
 with st.sidebar:
