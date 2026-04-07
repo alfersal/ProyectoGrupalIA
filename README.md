@@ -4,9 +4,21 @@ Proyecto con una web/dashboard en Streamlit para explorar indicadores de gasto d
 
 ## Enlace de la web
 
-Aplicación desplegada: https://losdelfondo-frontend.onrender.com/
+Aplicacion desplegada: https://losdelfondo-frontend.onrender.com/
 
-## Cómo lanzar la web en local
+## CI antes de desplegar en Render
+
+Se ha anadido el workflow de GitHub Actions en [`.github/workflows/ci.yml`](/LosDelFondo/.github/workflows/ci.yml) para validar el proyecto antes del despliegue.
+
+Checks que ejecuta:
+
+- instala dependencias
+- valida que los archivos Python compilan
+- regenera el dataset procesado
+- comprueba que el Parquet existe y tiene la estructura esperada
+
+
+## Como lanzar la web en local
 
 1. Crea un entorno virtual:
 
@@ -32,7 +44,7 @@ pip install -r requirements.txt
 python scripts/process_data.py
 ```
 
-5. Lanza la aplicación en local:
+5. Lanza la aplicacion en local:
 
 ```bash
 streamlit run dashboard/app.py
