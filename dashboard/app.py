@@ -138,9 +138,11 @@ LANGUAGES = {
 L = LANGUAGES[st.session_state.lang]
 
 # Configuración de la página
+icon_path = "dashboard/icon_white.png" if st.session_state.theme == 'Oscuro' else "dashboard/icon.png"
+
 st.set_page_config(
     page_title=L['page_title'],
-    page_icon="🏅",
+    page_icon=icon_path,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -525,7 +527,7 @@ if st.session_state.is_admin:
 
 # Sidebar y personalización
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/5144/5144083.png", width=100)
+    st.image(icon_path, width=100)
     st.markdown("## DEPORTEData")
     st.divider()
     
