@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import unicodedata
-import random
+
+from dashboard.chatbot import prepare_assistant_data
 
 # Inicialización de estado de sesión
 if 'is_admin' not in st.session_state:
@@ -397,7 +398,7 @@ with tab1:
         df_table.index = range(1, len(df_table) + 1)
         st.table(df_table)
         
-    except Exception as e:
+    except Exception:
         st.error(L['err_no_data'])
 
 with tab2:
@@ -419,7 +420,7 @@ with tab2:
                 @st.cache_data
                 def load_assistant_data():
                     df = pd.read_parquet("data/processed/deporte_data/anio=2023/hechos_indicadores.parquet")
-                    return df.rename(columns={'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur', 'Licencias_Federadas': 'Licencias Federadas'})
+                    return prepare_assistant_data(df)
                 
                 df_rag = load_assistant_data()
                 
