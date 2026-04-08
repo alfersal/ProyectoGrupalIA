@@ -220,6 +220,25 @@ st.markdown(f"""
         border-radius: 10px;
         margin-bottom: 10px;
     }}
+    [data-testid="stTextInputRootElement"] {{
+        background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
+        border: 1px solid {table_border} !important;
+        border-radius: 8px !important;
+    }}
+    [data-testid="stTextInputRootElement"] > div {{
+        background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
+    }}
+    [data-testid="stTextInputRootElement"] input {{
+        background-color: transparent !important;
+        color: {text_color} !important;
+    }}
+    [data-testid="stTextInputRootElement"] input::placeholder {{
+        color: {text_color} !important;
+        opacity: 0.6 !important;
+    }}
+    [data-testid="stTextInputRootElement"] svg {{
+        fill: {text_color} !important;
+    }}
 
     /* Refinamiento Chat Input (Chatbot) */
     [data-testid="stChatInput"], [data-testid="stChatInput"] div {{
@@ -276,6 +295,10 @@ st.markdown(f"""
         background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
     }}
     div[data-baseweb="select"] li {{
+        color: {text_color} !important;
+    }}
+    div[data-baseweb="radio"] label,
+    div[data-baseweb="radio"] div {{
         color: {text_color} !important;
     }}
     div.stButton > button, [data-testid="stFormSubmitButton"] > button, div.stButton > button p, [data-testid="stFormSubmitButton"] > button p {{
