@@ -70,7 +70,13 @@ LANGUAGES = {
         'admin_telemetry': "📡 Telemetría de Sistema",
         'admin_cpu': "Carga CPU",
         'admin_ram': "Uso RAM",
-        'admin_system_load': "Carga de Sistema (20 min)"
+        'admin_system_load': "Carga de Sistema (20 min)",
+        'col_gasto': "Gasto Promedio Hogar Eur",
+        'col_lic': "Licencias Federadas",
+        'col_ccaa': "CCAA",
+        'chart_q': "Consultas IA",
+        'chart_v': "Visitas Dashboard",
+        'chart_l': "Carga"
     },
     'EN': {
         'page_title': "DEPORTEData | Challenge A",
@@ -120,7 +126,13 @@ LANGUAGES = {
         'admin_telemetry': "📡 System Telemetry",
         'admin_cpu': "CPU Load",
         'admin_ram': "RAM Usage",
-        'admin_system_load': "System Load (20 min)"
+        'admin_system_load': "System Load (20 min)",
+        'col_gasto': "Avg Household Spending Eur",
+        'col_lic': "Federated Licenses",
+        'col_ccaa': "Region",
+        'chart_q': "AI Queries",
+        'chart_v': "Dashboard Visits",
+        'chart_l': "Load"
     }
 }
 L = LANGUAGES[st.session_state.lang]
@@ -237,12 +249,28 @@ st.markdown(f"""
         border: 1px solid {table_border} !important;
     }}
     
-    /* Corregir dropdowns en modo claro */
-    div[data-baseweb="popover"] ul {{
+    /* Corregir a fondo Menu de Configuración (3 puntos) en modo claro */
+    div[data-baseweb="popover"] ul, 
+    div[data-baseweb="popover"] li, 
+    div[data-baseweb="popover"] div, 
+    div[data-testid="stPopoverBody"], 
+    ul[data-testid="main-menu-list"], 
+    ul[data-testid="main-menu-list"] li,
+    ul[data-testid="main-menu-list"] div {{
         background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
-    }}
-    div[data-baseweb="popover"] li {{
         color: {text_color} !important;
+    }}
+    
+    div[data-baseweb="popover"] span, 
+    ul[data-testid="main-menu-list"] span,
+    div[data-baseweb="popover"] p {{
+        color: {text_color} !important;
+    }}
+    
+    /* Efecto hover en el menu */
+    div[data-baseweb="popover"] li:hover, 
+    ul[data-testid="main-menu-list"] li:hover {{
+        background-color: {"#F0F2F6" if st.session_state.theme == "Claro" else "#262730"} !important;
     }}
     div[data-baseweb="select"] ul {{
         background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
@@ -310,19 +338,21 @@ with tab1:
     try:
         # Cargar datos base
         df_real = pd.read_parquet(f"data/processed/deporte_data/anio={st.session_state.sel_year}/hechos_indicadores.parquet")
-        df_display = df_real.rename(columns={'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur', 'Licencias_Federadas': 'Licencias Federadas'})
+        df_display = df_real.rename(columns={'Gasto_Promedio_Hogar_Eur': L['col_gasto'], 'Licencias_Federadas': L['col_lic'], 'CCAA': L['col_ccaa']})
         
         # Aplicar filtro de Territorio
         if st.session_state.sel_territory != "Todas las CCAA":
-            df_filtered = df_display[df_display['CCAA'] == st.session_state.sel_territory]
+            # Si select_territory es el real, en el df original es en español.
+            # Filtrar usando el df original si es necesario, o buscar por la CCAA en la DB
+            df_filtered = df_display[df_real['CCAA'] == st.session_state.sel_territory]
         else:
             df_filtered = df_display
             
         # Métricas Dinámicas
         col1, col2, col3 = st.columns(3)
         if not df_filtered.empty:
-            avg_gasto = df_filtered['Gasto Promedio Hogar Eur'].mean()
-            total_licencias = df_filtered['Licencias Federadas'].sum()
+            avg_gasto = df_filtered[L['col_gasto']].mean()
+            total_licencias = df_filtered[L['col_lic']].sum()
             num_ccaa = len(df_filtered)
             
             col1.metric(L['metric_spending'], f"€ {avg_gasto:.0f}", None)
@@ -330,15 +360,15 @@ with tab1:
             col3.metric(L['metric_areas'], str(num_ccaa), None)
         
         st.subheader(L['chart_evolution'])
-        fig_scatter = px.scatter(df_filtered, x="Gasto Promedio Hogar Eur", y="Licencias Federadas", hover_name="CCAA", color_discrete_sequence=[accent_color])
+        fig_scatter = px.scatter(df_filtered, x=L['col_gasto'], y=L['col_lic'], hover_name=L['col_ccaa'], color_discrete_sequence=[accent_color])
         st.plotly_chart(apply_plotly_style(fig_scatter), use_container_width=True)
         
         st.subheader(L['chart_spending_region'])
-        fig_bar = px.bar(df_filtered, x="CCAA", y="Gasto Promedio Hogar Eur", color_discrete_sequence=[accent_color])
+        fig_bar = px.bar(df_filtered, x=L['col_ccaa'], y=L['col_gasto'], color_discrete_sequence=[accent_color])
         st.plotly_chart(apply_plotly_style(fig_bar), use_container_width=True)
 
         st.subheader(L['table_indicators'])
-        df_table = df_filtered[['CCAA', 'Gasto Promedio Hogar Eur', 'Licencias Federadas']].copy()
+        df_table = df_filtered[[L['col_ccaa'], L['col_gasto'], L['col_lic']]].copy()
         df_table.index = range(1, len(df_table) + 1)
         st.table(df_table)
         
@@ -439,7 +469,7 @@ if st.session_state.is_admin:
         col_u1, col_u2 = st.columns(2)
         with col_u1:
             st.metric(L['admin_active'], "142", None)
-            fig_usage = px.line(pd.DataFrame(np.random.randn(20, 2), columns=['Queries', 'Visits']), color_discrete_sequence=[accent_color, "#FF4B4B"])
+            fig_usage = px.line(pd.DataFrame(np.random.randn(20, 2), columns=[L['chart_q'], L['chart_v']]), color_discrete_sequence=[accent_color, "#FF4B4B"])
             st.plotly_chart(apply_plotly_style(fig_usage), use_container_width=True)
         with col_u2:
             st.metric(L['admin_queries'], "2,840", None)
@@ -466,7 +496,7 @@ if st.session_state.is_admin:
             col_t1.metric(L['admin_cpu'], "24%", "2%")
             col_t2.metric(L['admin_ram'], "1.2 GB", "0.1 GB")
             st.markdown(f"**{L['admin_system_load']}**")
-            telemetry_data = pd.DataFrame(np.random.randn(20, 1), columns=['Load'])
+            telemetry_data = pd.DataFrame(np.random.randn(20, 1), columns=[L['chart_l']])
             fig_telemetry = px.area(telemetry_data, color_discrete_sequence=[accent_color])
             st.plotly_chart(apply_plotly_style(fig_telemetry), use_container_width=True)
 
@@ -487,6 +517,8 @@ with st.sidebar:
     )
     if lang != st.session_state.lang:
         st.session_state.lang = lang
+        # Refrescar saludo del chatbot al cambiar idioma
+        st.session_state.messages = [{"role": "assistant", "content": LANGUAGES[lang]['chat_hi']}]
         st.rerun()
 
     theme = st.radio(L['sidebar_theme'], ["Oscuro", "Claro"] if st.session_state.lang == "ES" else ["Dark", "Light"], index=0 if st.session_state.theme in ["Oscuro", "Dark"] else 1, horizontal=True)
