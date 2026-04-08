@@ -3,6 +3,8 @@ import time
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import unicodedata
+import random
 
 # Inicialización de estado de sesión
 if 'is_admin' not in st.session_state:
@@ -11,14 +13,121 @@ if 'show_login' not in st.session_state:
     st.session_state.show_login = False
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Oscuro'
+if 'lang' not in st.session_state:
+    st.session_state.lang = 'ES'
 if 'sel_year' not in st.session_state:
     st.session_state.sel_year = '2023'
 if 'sel_territory' not in st.session_state:
     st.session_state.sel_territory = 'Todas las CCAA'
 
+# Diccionario de Traducciones
+LANGUAGES = {
+    'ES': {
+        'page_title': "DEPORTEData | Reto A",
+        'sidebar_prefs': "Preferencias",
+        'sidebar_theme': "Modo Visualización",
+        'sidebar_lang': "Idioma",
+        'sidebar_filters': "Seleccionar Filtros Genéricos",
+        'filter_year': "Año de Datos",
+        'filter_territory': "Territorio",
+        'all_ccaa': "Todas las CCAA",
+        'login_admin': "🔓 Login Admin",
+        'admin_label': "👤 Administrador",
+        'main_title': "DEPORTEData: Analítica e Inteligencia Deportiva",
+        'main_subtitle': "Evolución del gasto en deporte por hogar y su relación con la práctica deportiva federada por CCAA",
+        'login_header': "🔑 Inicio de Sesión - Administrador",
+        'login_user': "Usuario",
+        'login_pass': "Contraseña",
+        'login_btn': "Entrar",
+        'login_err': "Credenciales incorrectas",
+        'tab_home': "📊 Inicio",
+        'tab_ai': "🤖 Asistente IA (RAG)",
+        'tab_admin': "⚙️ Admin",
+        'dash_header': "Dashboard Analítico",
+        'metric_spending': "Gasto Promedio/Hogar",
+        'metric_licenses': "Licencias Federadas",
+        'metric_areas': "Áreas Analizadas",
+        'chart_evolution': "Evolución de Gasto vs Licencias",
+        'chart_spending_region': "Gasto Promedio por Hogar por CCAA",
+        'table_indicators': "Tabla de Indicadores",
+        'err_no_data': "No se encontraron datos para los filtros seleccionados o el archivo no existe.",
+        'chat_header': "Consulta Inteligente sobre DEPORTEData",
+        'chat_input': "Escribe tu pregunta aquí...",
+        'chat_hi': "¡Hola! Soy el asistente IA de DEPORTEData. ¿En qué puedo ayudarte?",
+        'chat_max_spend': "🔍 La CCAA que más gasta es {region} con {value} €.",
+        'chat_min_spend': "🔍 La CCAA que menos gasta es {region} con {value} €.",
+        'chat_max_lic': "🏆 {region} lidera en licencias con {value:,}.",
+        'chat_single_region': "📍 En {region}: Gasto de {gasto} € y {lic} licencias.",
+        'chat_analyze': "🧠 He analizado los datos actuales. ¿Deseas algún detalle específico?",
+        'chat_error_data': "⚠️ No hay datos disponibles para el análisis.",
+        'admin_header': "Panel de Administración",
+        'admin_usage': "📊 Panel de Uso",
+        'admin_active': "Usuarios Activos (24h)",
+        'admin_queries': "Consultas Totales",
+        'admin_security': "🛡️ Seguridad y Accesos",
+        'admin_failed': "Intentos Fallidos (24h)",
+        'admin_last_logs': "Últimos Intentos de Acceso",
+        'admin_telemetry': "📡 Telemetría de Sistema",
+        'admin_cpu': "Carga CPU",
+        'admin_ram': "Uso RAM",
+        'admin_system_load': "Carga de Sistema (20 min)"
+    },
+    'EN': {
+        'page_title': "DEPORTEData | Challenge A",
+        'sidebar_prefs': "Preferences",
+        'sidebar_theme': "Display Mode",
+        'sidebar_lang': "Language",
+        'sidebar_filters': "Select General Filters",
+        'filter_year': "Data Year",
+        'filter_territory': "Territory",
+        'all_ccaa': "All Regions",
+        'login_admin': "🔓 Admin Login",
+        'admin_label': "👤 Administrator",
+        'main_title': "DEPORTEData: Sports Analytics & Intelligence",
+        'main_subtitle': "Evolution of household sports spending and its relationship with federated sports practice by region",
+        'login_header': "🔑 Admin Login",
+        'login_user': "Username",
+        'login_pass': "Password",
+        'login_btn': "Login",
+        'login_err': "Incorrect credentials",
+        'tab_home': "📊 Home",
+        'tab_ai': "🤖 AI Assistant (RAG)",
+        'tab_admin': "⚙️ Admin",
+        'dash_header': "Analytical Dashboard",
+        'metric_spending': "Avg Spending/Home",
+        'metric_licenses': "Federated Licenses",
+        'metric_areas': "Analyzed Areas",
+        'chart_evolution': "Spending vs Licenses Evolution",
+        'chart_spending_region': "Avg Household Spending by Region",
+        'table_indicators': "Indicators Table",
+        'err_no_data': "No data found for the selected filters or file does not exist.",
+        'chat_header': "Intelligent Query about DEPORTEData",
+        'chat_input': "Type your question here...",
+        'chat_hi': "Hi! I am the DEPORTEData AI assistant. How can I help you?",
+        'chat_max_spend': "🔍 The region with the highest spending is {region} with {value} €.",
+        'chat_min_spend': "🔍 The region with the lowest spending is {region} with {value} €.",
+        'chat_max_lic': "🏆 {region} leads in licenses with {value:,}.",
+        'chat_single_region': "📍 In {region}: Spending of {gasto} € and {lic} licenses.",
+        'chat_analyze': "🧠 I have analyzed the current data. Do you need any specific details?",
+        'chat_error_data': "⚠️ No data available for analysis.",
+        'admin_header': "Administration Panel",
+        'admin_usage': "📊 Usage Panel",
+        'admin_active': "Active Users (24h)",
+        'admin_queries': "Total Queries",
+        'admin_security': "🛡️ Security & Access",
+        'admin_failed': "Failed Attempts (24h)",
+        'admin_last_logs': "Last Access Attempts",
+        'admin_telemetry': "📡 System Telemetry",
+        'admin_cpu': "CPU Load",
+        'admin_ram': "RAM Usage",
+        'admin_system_load': "System Load (20 min)"
+    }
+}
+L = LANGUAGES[st.session_state.lang]
+
 # Configuración de la página
 st.set_page_config(
-    page_title="DEPORTEData | Reto A",
+    page_title=L['page_title'],
     page_icon="🏅",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -100,6 +209,27 @@ st.markdown(f"""
         margin-bottom: 10px;
     }}
 
+    /* Refinamiento Chat Input (Chatbot) */
+    [data-testid="stChatInput"], [data-testid="stChatInput"] div {{
+        background-color: transparent !important;
+        border: none !important;
+    }}
+    [data-testid="stChatInput"] textarea {{
+        background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
+        color: {text_color} !important;
+        border: 1px solid {table_border} !important;
+        border-radius: 8px !important;
+    }}
+    [data-testid="stChatInput"] textarea::placeholder {{
+        color: {text_color} !important;
+        opacity: 0.6;
+    }}
+    [data-testid="stChatInput"] button {{
+        background-color: {accent_color} !important;
+        color: {"#000000" if st.session_state.theme == "Oscuro" else "#FFFFFF"} !important;
+        border-radius: 5px !important;
+    }}
+
     /* Estilo para los selectores (filtros) - Hacerlos 'claritos' en modo claro */
     div[data-baseweb="select"] > div {{
         background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
@@ -107,11 +237,20 @@ st.markdown(f"""
         border: 1px solid {table_border} !important;
     }}
     
-    /* Asegurar color de texto en las etiquetas de los selectbox */
-    .stSelectbox label p {{
+    /* Corregir dropdowns en modo claro */
+    div[data-baseweb="popover"] ul {{
+        background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
+    }}
+    div[data-baseweb="popover"] li {{
         color: {text_color} !important;
     }}
-    div.stButton > button, [data-testid="stFormSubmitButton"] > button p {{
+    div[data-baseweb="select"] ul {{
+        background-color: {"#FFFFFF" if st.session_state.theme == "Claro" else "#1A1C23"} !important;
+    }}
+    div[data-baseweb="select"] li {{
+        color: {text_color} !important;
+    }}
+    div.stButton > button, [data-testid="stFormSubmitButton"] > button, div.stButton > button p, [data-testid="stFormSubmitButton"] > button p {{
         color: {"#000000" if st.session_state.theme == "Oscuro" else "#FFFFFF"} !important;
     }}
     div.stButton > button, [data-testid="stFormSubmitButton"] > button {{
@@ -138,39 +277,36 @@ def apply_plotly_style(fig):
     return fig
 
 # Título y encabezado
-st.title("DEPORTEData: Analítica e Inteligencia Deportiva")
-st.markdown("### Evolución del gasto en deporte por hogar y su relación con la práctica deportiva federada por CCAA")
+st.title(L['main_title'])
+st.markdown(f"### {L['main_subtitle']}")
 
 # Pantalla de login
 if st.session_state.show_login:
-    st.header("🔑 Inicio de Sesión - Administrador")
+    st.header(L['login_header'])
     with st.form("login_form"):
-        username = st.text_input("Usuario")
-        password = st.text_input("Contraseña", type="password")
-        submit = st.form_submit_button("Entrar")
+        username = st.text_input(L['login_user'])
+        password = st.text_input(L['login_pass'], type="password")
+        submit = st.form_submit_button(L['login_btn'])
         if submit:
             if username == "admin" and password == "1234":
                 st.session_state.is_admin = True
                 st.session_state.show_login = False
                 st.rerun()
             else:
-                st.error("Credenciales incorrectas")
-    if st.button("Cancelar"):
-        st.session_state.show_login = False
-        st.rerun()
+                st.error(L['login_err'])
     st.stop()
 
 # Definición de pestañas
-tabs_list = ["📊 Inicio", "🤖 Asistente IA (RAG)"]
+tabs_list = [L['tab_home'], L['tab_ai']]
 if st.session_state.is_admin:
-    tabs_list.append("⚙️ Admin")
+    tabs_list.append(L['tab_admin'])
 tabs = st.tabs(tabs_list)
 tab1, tab2 = tabs[0], tabs[1]
 if st.session_state.is_admin:
     tab_admin = tabs[2]
 
 with tab1:
-    st.header(f"Dashboard Analítico - {st.session_state.sel_year}")
+    st.header(f"{L['dash_header']} - {st.session_state.sel_year}")
     try:
         # Cargar datos base
         df_real = pd.read_parquet(f"data/processed/deporte_data/anio={st.session_state.sel_year}/hechos_indicadores.parquet")
@@ -189,34 +325,34 @@ with tab1:
             total_licencias = df_filtered['Licencias Federadas'].sum()
             num_ccaa = len(df_filtered)
             
-            col1.metric("Gasto Promedio/Hogar", f"€ {avg_gasto:.0f}", None)
-            col2.metric("Licencias Federadas", f"{total_licencias/1e6:.1f}M" if total_licencias > 1e5 else f"{total_licencias:,}", None)
-            col3.metric("Áreas Analizadas", str(num_ccaa), None)
+            col1.metric(L['metric_spending'], f"€ {avg_gasto:.0f}", None)
+            col2.metric(L['metric_licenses'], f"{total_licencias/1e6:.1f}M" if total_licencias > 1e5 else f"{total_licencias:,}", None)
+            col3.metric(L['metric_areas'], str(num_ccaa), None)
         
-        st.subheader("Evolución de Gasto vs Licencias")
+        st.subheader(L['chart_evolution'])
         fig_scatter = px.scatter(df_filtered, x="Gasto Promedio Hogar Eur", y="Licencias Federadas", hover_name="CCAA", color_discrete_sequence=[accent_color])
         st.plotly_chart(apply_plotly_style(fig_scatter), use_container_width=True)
         
-        st.subheader("Gasto Promedio por Hogar por CCAA")
+        st.subheader(L['chart_spending_region'])
         fig_bar = px.bar(df_filtered, x="CCAA", y="Gasto Promedio Hogar Eur", color_discrete_sequence=[accent_color])
         st.plotly_chart(apply_plotly_style(fig_bar), use_container_width=True)
 
-        st.subheader("Tabla de Indicadores")
+        st.subheader(L['table_indicators'])
         df_table = df_filtered[['CCAA', 'Gasto Promedio Hogar Eur', 'Licencias Federadas']].copy()
         df_table.index = range(1, len(df_table) + 1)
         st.table(df_table)
         
     except Exception as e:
-        st.error(f"No se encontraron datos para los filtros seleccionados o el archivo no existe.")
+        st.error(L['err_no_data'])
 
 with tab2:
-    st.header("Consulta Inteligente sobre DEPORTEData")
+    st.header(L['chat_header'])
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "¡Hola! Soy el asistente IA de DEPORTEData. ¿En qué puedo ayudarte?"}]
+        st.session_state.messages = [{"role": "assistant", "content": L['chat_hi']}]
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-    if prompt := st.chat_input("Escribe tu pregunta aquí..."):
+    if prompt := st.chat_input(L['chat_input']):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -224,15 +360,71 @@ with tab2:
             message_placeholder = st.empty()
             full_response = ""
             try:
-                df_rag = pd.read_parquet("data/processed/deporte_data/anio=2023/hechos_indicadores.parquet")
-                df_rag = df_rag.rename(columns={'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur'})
-                if "gasta más" in prompt.lower():
+                # Cargar y Cachear datos para el asistente
+                @st.cache_data
+                def load_assistant_data():
+                    df = pd.read_parquet("data/processed/deporte_data/anio=2023/hechos_indicadores.parquet")
+                    return df.rename(columns={'Gasto_Promedio_Hogar_Eur': 'Gasto Promedio Hogar Eur', 'Licencias_Federadas': 'Licencias Federadas'})
+                
+                df_rag = load_assistant_data()
+                
+                # Función de normalización
+                def normalize(text):
+                    return "".join(c for c in unicodedata.normalize('NFD', text.lower()) if unicodedata.category(c) != 'Mn')
+                
+                p_low = normalize(prompt)
+                
+                # Lógica dinámica del asistente
+                if any(x in p_low for x in ["gasta mas", "maximo gasto", "most spending", "highest spending", "mas dinero"]):
                     row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmax()]
-                    assistant_response = f"🔍 La CCAA que más gasta es {row['CCAA']} con {row['Gasto Promedio Hogar Eur']} €."
+                    assistant_response = L['chat_max_spend'].format(region=row['CCAA'], value=row['Gasto Promedio Hogar Eur'])
+                elif any(x in p_low for x in ["gasta menos", "minimo gasto", "least spending", "lowest spending"]):
+                    row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmin()]
+                    assistant_response = L['chat_min_spend'].format(region=row['CCAA'], value=row['Gasto Promedio Hogar Eur'])
+                elif any(x in p_low for x in ["mas licencias", "most licenses", "mas federados", "mas socios"]):
+                    row = df_rag.loc[df_rag['Licencias Federadas'].idxmax()]
+                    assistant_response = L['chat_max_lic'].format(region=row['CCAA'], value=int(row['Licencias Federadas']))
                 else:
-                    assistant_response = "🧠 He analizado los datos actuales. ¿Deseas algún detalle específico?"
-            except Exception:
-                assistant_response = "⚠️ No hay datos disponibles para el análisis."
+                    # Mapeo de nombres comunes a oficiales
+                    aliases = {
+                        "andalucia": "Andalucía",
+                        "aragon": "Aragón",
+                        "asturias": "Asturias, Principado de",
+                        "baleares": "Balears, Illes",
+                        "balears": "Balears, Illes",
+                        "canarias": "Canarias",
+                        "cantabria": "Cantabria",
+                        "leon": "Castilla y León",
+                        "mancha": "Castilla - La Mancha",
+                        "cataluña": "Cataluña",
+                        "catalunya": "Cataluña",
+                        "catalonia": "Cataluña",
+                        "valencia": "Comunitat Valenciana",
+                        "valenciana": "Comunitat Valenciana",
+                        "extremadura": "Extremadura",
+                        "galicia": "Galicia",
+                        "madrid": "Madrid, Comunidad de",
+                        "murcia": "Murcia, Región de",
+                        "navarra": "Navarra, Comunidad Foral de",
+                        "vasco": "País Vasco",
+                        "rioja": "Rioja, La"
+                    }
+                    
+                    found = False
+                    for key, official_name in aliases.items():
+                        if key in p_low:
+                            row = df_rag[df_rag['CCAA'] == official_name].iloc[0]
+                            assistant_response = L['chat_single_region'].format(region=official_name, gasto=row['Gasto Promedio Hogar Eur'], lic=int(row['Licencias Federadas']))
+                            found = True
+                            break
+                    if not found:
+                        # Sugerencia aleatoria para no ser repetitivo
+                        random_row = df_rag.sample(1).iloc[0]
+                        interesting_fact = L['chat_single_region'].format(region=random_row['CCAA'], gasto=random_row['Gasto Promedio Hogar Eur'], lic=int(random_row['Licencias Federadas']))
+                        assistant_response = f"{L['chat_analyze']} {interesting_fact}"
+            except Exception as e:
+                assistant_response = f"{L['chat_error_data']} ({str(e)})"
+            
             for chunk in assistant_response.split():
                 full_response += chunk + " "
                 time.sleep(0.04)
@@ -242,19 +434,41 @@ with tab2:
 
 if st.session_state.is_admin:
     with tab_admin:
-        st.header("Panel de Administración")
-        st.subheader("📊 Panel de Uso")
+        st.header(L['admin_header'])
+        st.subheader(L['admin_usage'])
         col_u1, col_u2 = st.columns(2)
         with col_u1:
-            st.metric("Usuarios Activos (24h)", "142", None)
-            fig_usage = px.line(pd.DataFrame(np.random.randn(20, 2), columns=['Consultas IA', 'Visitas Dashboard']), color_discrete_sequence=[accent_color, "#FF4B4B"])
+            st.metric(L['admin_active'], "142", None)
+            fig_usage = px.line(pd.DataFrame(np.random.randn(20, 2), columns=['Queries', 'Visits']), color_discrete_sequence=[accent_color, "#FF4B4B"])
             st.plotly_chart(apply_plotly_style(fig_usage), use_container_width=True)
         with col_u2:
-            st.metric("Consultas Totales", "2,840", None)
+            st.metric(L['admin_queries'], "2,840", None)
             fig_total = px.bar(np.random.randint(10, 100, size=(7, 1)), color_discrete_sequence=[accent_color])
             st.plotly_chart(apply_plotly_style(fig_total), use_container_width=True)
+        
         st.divider()
-        st.json({"status": "operativo", "version": "Alpha V1.5"})
+        
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            st.subheader(L['admin_security'])
+            st.metric(L['admin_failed'], "3", "-12%", delta_color="normal")
+            st.markdown(f"**{L['admin_last_logs']}**")
+            admin_logs = pd.DataFrame({
+                "User": ["admin", "root", "guest", "admin"],
+                "IP": ["192.168.1.45", "85.23.11.102", "172.16.0.5", "192.168.1.45"],
+                "Status": ["Success", "Blocked", "Failed", "Success"]
+            })
+            st.table(admin_logs)
+            
+        with col_s2:
+            st.subheader(L['admin_telemetry'])
+            col_t1, col_t2 = st.columns(2)
+            col_t1.metric(L['admin_cpu'], "24%", "2%")
+            col_t2.metric(L['admin_ram'], "1.2 GB", "0.1 GB")
+            st.markdown(f"**{L['admin_system_load']}**")
+            telemetry_data = pd.DataFrame(np.random.randn(20, 1), columns=['Load'])
+            fig_telemetry = px.area(telemetry_data, color_discrete_sequence=[accent_color])
+            st.plotly_chart(apply_plotly_style(fig_telemetry), use_container_width=True)
 
 # Sidebar y personalización
 with st.sidebar:
@@ -262,19 +476,32 @@ with st.sidebar:
     st.markdown("## DEPORTEData")
     st.divider()
     
-    st.markdown("### Preferencias")
-    theme = st.radio("Modo Visualización", ["Oscuro", "Claro"], index=0 if st.session_state.theme == "Oscuro" else 1, horizontal=True)
-    if theme != st.session_state.theme:
-        st.session_state.theme = theme
+    st.markdown(f"### {L['sidebar_prefs']}")
+    
+    # Selector de Idioma
+    lang = st.selectbox(
+        L['sidebar_lang'], 
+        ["ES", "EN"], 
+        index=0 if st.session_state.lang == "ES" else 1,
+        format_func=lambda x: "🇪🇸 Español" if x == "ES" else "🇺🇸 English"
+    )
+    if lang != st.session_state.lang:
+        st.session_state.lang = lang
+        st.rerun()
+
+    theme = st.radio(L['sidebar_theme'], ["Oscuro", "Claro"] if st.session_state.lang == "ES" else ["Dark", "Light"], index=0 if st.session_state.theme in ["Oscuro", "Dark"] else 1, horizontal=True)
+    theme_val = "Oscuro" if theme in ["Oscuro", "Dark"] else "Claro"
+    if theme_val != st.session_state.theme:
+        st.session_state.theme = theme_val
         st.rerun()
 
     st.divider()
     
-    st.markdown("### Seleccionar Filtros Genéricos")
+    st.markdown(f"### {L['sidebar_filters']}")
     # Filtro de Año persistente
     year_options = ["2023", "2022", "2021", "2020"]
     st.selectbox(
-        "Año de Datos", 
+        L['filter_year'], 
         year_options, 
         index=year_options.index(st.session_state.sel_year),
         key='sel_year'
@@ -282,7 +509,7 @@ with st.sidebar:
     
     # Filtro de Territorio persistente
     territory_options = [
-        "Todas las CCAA", 
+        L['all_ccaa'], 
         "Andalucía", "Aragón", "Asturias, Principado de", "Balears, Illes", 
         "Canarias", "Cantabria", "Castilla y León", "Castilla - La Mancha", 
         "Cataluña", "Comunitat Valenciana", "Extremadura", "Galicia", 
@@ -290,20 +517,22 @@ with st.sidebar:
         "País Vasco", "Rioja, La"
     ]
     st.selectbox(
-        "Territorio", 
+        L['filter_territory'], 
         territory_options, 
-        index=territory_options.index(st.session_state.sel_territory),
-        key='sel_territory'
+        index=territory_options.index(st.session_state.sel_territory) if st.session_state.sel_territory in territory_options else 0,
+        key='sel_territory_input'
     )
+    # Sincronizar sel_territory con el nombre interno (Todas las CCAA)
+    if st.session_state.sel_territory_input == L['all_ccaa']:
+        st.session_state.sel_territory = "Todas las CCAA"
+    else:
+        st.session_state.sel_territory = st.session_state.sel_territory_input
 
     st.divider()
     
     if not st.session_state.is_admin:
-        if st.button("🔓 Login Admin"):
+        if st.button(L['login_admin']):
             st.session_state.show_login = True
             st.rerun()
     else:
-        st.success("👤 Administrador")
-        if st.button("🔒 Cerrar Sesión"):
-            st.session_state.is_admin = False
-            st.rerun()
+        st.success(L['admin_label'])
