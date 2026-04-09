@@ -5,7 +5,10 @@ import numpy as np
 import plotly.express as px
 import unicodedata
 
-from dashboard.chatbot import prepare_assistant_data
+try:
+    from dashboard.chatbot import prepare_assistant_data
+except ModuleNotFoundError:
+    from chatbot import prepare_assistant_data
 
 # Inicialización de estado de sesión
 if 'is_admin' not in st.session_state:
@@ -20,6 +23,8 @@ if 'sel_year' not in st.session_state:
     st.session_state.sel_year = '2023'
 if 'sel_territory' not in st.session_state:
     st.session_state.sel_territory = 'Todas las CCAA'
+if 'sel_territory_input' not in st.session_state:
+    st.session_state.sel_territory_input = 'Todas las CCAA'
 
 # Diccionario de Traducciones
 LANGUAGES = {
@@ -594,3 +599,4 @@ with st.sidebar:
             st.rerun()
     else:
         st.success(L['admin_label'])
+
