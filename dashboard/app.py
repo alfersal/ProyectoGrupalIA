@@ -6,9 +6,9 @@ import plotly.express as px
 import unicodedata
 
 try:
-    from dashboard.chatbot import prepare_assistant_data
+    from dashboard.chatbot import prepare_assistant_data, load_models, check_toxicity, generate_llm_response
 except ModuleNotFoundError:
-    from chatbot import prepare_assistant_data
+    from chatbot import prepare_assistant_data, load_models, check_toxicity, generate_llm_response
 
 # Inicialización de estado de sesión
 if 'is_admin' not in st.session_state:
@@ -249,7 +249,16 @@ st.markdown(f"""
     }}
 
     /* Refinamiento Chat Input (Chatbot) */
-    [data-testid="stChatInput"], [data-testid="stChatInput"] div {{
+    [data-testid="stChatInput"] {{
+        position: sticky !important;
+        bottom: 0 !important;
+        padding-bottom: 2rem !important;
+        padding-top: 1rem !important;
+        background-color: {bg_color} !important;
+        z-index: 99 !important;
+        border: none !important;
+    }}
+    [data-testid="stChatInput"] div {{
         background-color: transparent !important;
         border: none !important;
     }}
@@ -410,15 +419,21 @@ with tab2:
     st.header(L['chat_header'])
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": L['chat_hi']}]
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        
+    msg_container = st.container()
+    
+    with msg_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+                
     if prompt := st.chat_input(L['chat_input']):
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
+        with msg_container:
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
             full_response = ""
             try:
                 # Cargar y Cachear datos para el asistente
@@ -428,61 +443,17 @@ with tab2:
                     return prepare_assistant_data(df)
                 
                 df_rag = load_assistant_data()
+                toxic_clf, llm_pipeline = load_models()
                 
-                # Función de normalización
-                def normalize(text):
-                    return "".join(c for c in unicodedata.normalize('NFD', text.lower()) if unicodedata.category(c) != 'Mn')
+                # Revisar toxicidad primero
+                is_toxic, score = check_toxicity(prompt, toxic_clf)
                 
-                p_low = normalize(prompt)
-                
-                # Lógica dinámica del asistente
-                if any(x in p_low for x in ["gasta mas", "maximo gasto", "most spending", "highest spending", "mas dinero"]):
-                    row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmax()]
-                    assistant_response = L['chat_max_spend'].format(region=row['CCAA'], value=row['Gasto Promedio Hogar Eur'])
-                elif any(x in p_low for x in ["gasta menos", "minimo gasto", "least spending", "lowest spending"]):
-                    row = df_rag.loc[df_rag['Gasto Promedio Hogar Eur'].idxmin()]
-                    assistant_response = L['chat_min_spend'].format(region=row['CCAA'], value=row['Gasto Promedio Hogar Eur'])
-                elif any(x in p_low for x in ["mas licencias", "most licenses", "mas federados", "mas socios"]):
-                    row = df_rag.loc[df_rag['Licencias Federadas'].idxmax()]
-                    assistant_response = L['chat_max_lic'].format(region=row['CCAA'], value=int(row['Licencias Federadas']))
+                if is_toxic:
+                    # Mensaje de bloqueo en el idioma seleccionado
+                    assistant_response = "⚠️ El mensaje ha sido bloqueado por nuestra política de seguridad debido a lenguaje tóxico o inapropiado." if st.session_state.lang == "ES" else "⚠️ The message has been blocked by our security policy due to toxic or inappropriate language."
                 else:
-                    # Mapeo de nombres comunes a oficiales
-                    aliases = {
-                        "andalucia": "Andalucía",
-                        "aragon": "Aragón",
-                        "asturias": "Asturias, Principado de",
-                        "baleares": "Balears, Illes",
-                        "balears": "Balears, Illes",
-                        "canarias": "Canarias",
-                        "cantabria": "Cantabria",
-                        "leon": "Castilla y León",
-                        "mancha": "Castilla - La Mancha",
-                        "cataluña": "Cataluña",
-                        "catalunya": "Cataluña",
-                        "catalonia": "Cataluña",
-                        "valencia": "Comunitat Valenciana",
-                        "valenciana": "Comunitat Valenciana",
-                        "extremadura": "Extremadura",
-                        "galicia": "Galicia",
-                        "madrid": "Madrid, Comunidad de",
-                        "murcia": "Murcia, Región de",
-                        "navarra": "Navarra, Comunidad Foral de",
-                        "vasco": "País Vasco",
-                        "rioja": "Rioja, La"
-                    }
-                    
-                    found = False
-                    for key, official_name in aliases.items():
-                        if key in p_low:
-                            row = df_rag[df_rag['CCAA'] == official_name].iloc[0]
-                            assistant_response = L['chat_single_region'].format(region=official_name, gasto=row['Gasto Promedio Hogar Eur'], lic=int(row['Licencias Federadas']))
-                            found = True
-                            break
-                    if not found:
-                        # Sugerencia aleatoria para no ser repetitivo
-                        random_row = df_rag.sample(1).iloc[0]
-                        interesting_fact = L['chat_single_region'].format(region=random_row['CCAA'], gasto=random_row['Gasto Promedio Hogar Eur'], lic=int(random_row['Licencias Federadas']))
-                        assistant_response = f"{L['chat_analyze']} {interesting_fact}"
+                    # Generar respuesta usando el LLM
+                    assistant_response = generate_llm_response(prompt, df_rag, llm_pipeline, st.session_state.lang)
             except Exception as e:
                 assistant_response = f"{L['chat_error_data']} ({str(e)})"
             
