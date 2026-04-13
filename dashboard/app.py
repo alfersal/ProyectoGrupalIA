@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import unicodedata
+
 
 try:
     from dashboard.chatbot import prepare_assistant_data, load_models, check_toxicity, generate_llm_response
