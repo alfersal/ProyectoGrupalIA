@@ -1,82 +1,67 @@
-from __future__ import annotations
-
 import os
-
-import numpy as np
+import glob
 import pandas as pd
 
 RAW_DIR = "data/raw"
-PROCESSED_DIR = "data/processed/deporte_data/anio=2023"
-SOURCE_YEAR = 2023
-SOURCE_NAME = "MEFD_DEPORTEData"
-CCAA_LIST = [
-    "Andalucía",
-    "Aragón",
-    "Asturias, Principado de",
-    "Balears, Illes",
-    "Canarias",
-    "Cantabria",
-    "Castilla y León",
-    "Castilla - La Mancha",
-    "Cataluña",
-    "Comunitat Valenciana",
-    "Extremadura",
-    "Galicia",
-    "Madrid, Comunidad de",
-    "Murcia, Región de",
-    "Navarra, Comunidad Foral de",
-    "País Vasco",
-    "Rioja, La",
-]
+PROCESSED_DIR = "data/processed"
 
+def fix_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Elimina BOM y espacios extra en las columnas."""
+    # Eliminar el caracter especial invisible (BOM) que suele colarse al leer con latin1
+    df.columns = [col.replace('\ufeff', '').strip() for col in df.columns]
+    return df
 
-def generate_source_dataframe(seed: int = 42) -> pd.DataFrame:
-    """Create the reproducible source dataframe used by the app."""
-    np.random.seed(seed)
-    gasto_base = np.random.normal(300, 50, len(CCAA_LIST))
-    licencias_base = gasto_base * np.random.normal(300, 50, len(CCAA_LIST)) + np.random.normal(
-        10000, 5000, len(CCAA_LIST)
-    )
+def unify_directory_csvs(directory_pattern: str, output_parquet: str) -> bool:
+    """Busca CSVs por glob pattern, los unifica y genera un Parquet."""
+    files = glob.glob(directory_pattern)
+    if not files:
+        print(f"No se encontraron archivos para el patrón: {directory_pattern}")
+        return False
 
-    return pd.DataFrame(
-        {
-            "CCAA": CCAA_LIST,
-            "Gasto_Promedio_Hogar_Eur": round(pd.Series(gasto_base), 2),
-            "Licencias_Federadas": round(pd.Series(licencias_base)).astype(int),
-            "Poblacion_Activa_Dep": round(pd.Series(licencias_base) * 1.5).astype(int),
-        }
-    )
+    dfs = []
+    for f in files:
+        try:
+            # latin1 e iso-8859-1 suelen manejar mejor los acentos en datos del gobierno español
+            df = pd.read_csv(f, sep=';', encoding='latin1')
+            df = fix_columns(df)
+            
+            # Convertir todas las columnas a string para evitar conflictos de esquemas en Parquet
+            # Esto soluciona 'Conversion failed for column Total with type object' (mezcla float/string)
+            df = df.astype(str)
+            
+            # Añadir trazabilidad
+            df['archivo_origen'] = os.path.basename(f)
+            dfs.append(df)
+            print(f"Leído exitosamente: {os.path.basename(f)}")
+        except Exception as e:
+            print(f"Error procesando {f}: {e}")
 
-
-def build_processed_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
-    """Add the columns expected by the analytical model."""
-    df_hechos = df_raw.copy()
-    df_hechos["anio"] = SOURCE_YEAR
-    df_hechos["fuente"] = SOURCE_NAME
-    return df_hechos
-
+    if dfs:
+        # Concatenar ignorando el índice. Si hay columas distintas, insertará NaNs (comportamiento deseado)
+        df_unificado = pd.concat(dfs, ignore_index=True)
+        
+        # Guardar en parquet
+        os.makedirs(PROCESSED_DIR, exist_ok=True)
+        output_path = os.path.join(PROCESSED_DIR, output_parquet)
+        df_unificado.to_parquet(output_path, engine="pyarrow", index=False)
+        print(f" Guardado exitoso: {output_path} con {len(df_unificado)} registros y {len(df_unificado.columns)} columnas.\n")
+        return True
+    return False
 
 def persist_datasets() -> tuple[str, str]:
-    """Generate, save and return the raw and parquet dataset paths."""
-    os.makedirs(RAW_DIR, exist_ok=True)
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    """Carga los CSVs raw y devuelve las rutas de los procesados."""
+    federados_pattern = os.path.join(RAW_DIR, "Deporte_Federado", "*.csv")
+    unify_directory_csvs(federados_pattern, "federados.parquet")
+    
+    gasto_pattern = os.path.join(RAW_DIR, "Gasto_*", "*.csv")
+    unify_directory_csvs(gasto_pattern, "gasto.parquet")
 
-    df_raw = generate_source_dataframe()
-    raw_path = os.path.join(RAW_DIR, "gasto_y_federado_2023.csv")
-    df_raw.to_csv(raw_path, index=False)
-
-    df_hechos = build_processed_dataframe(df_raw)
-    parquet_path = os.path.join(PROCESSED_DIR, "hechos_indicadores.parquet")
-    df_hechos.to_parquet(parquet_path, index=False, engine="pyarrow")
-
-    return raw_path, parquet_path
-
+    return os.path.join(PROCESSED_DIR, "federados.parquet"), os.path.join(PROCESSED_DIR, "gasto.parquet")
 
 def main() -> None:
-    raw_path, parquet_path = persist_datasets()
-    print(f"Datos raw guardados en: {raw_path}")
-    print(f"Datos procesados (Parquet) guardados en: {parquet_path}")
-
+    print("Iniciando procesamiento de datos...")
+    federados_path, gasto_path = persist_datasets()
+    print("¡Procesamiento finalizado!")
 
 if __name__ == "__main__":
     main()
